@@ -1,0 +1,5 @@
+<!-- This is a placeholder for the hero image -->
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="600" fill="#f3f4f6"/>
+  <text x="400" y="300" font-family="Arial, sans-serif" font-size="24" fill="#6b7280" text-anchor="middle">Modern Product Showcase</text>
+</svg>
