@@ -9,14 +9,25 @@ const providers = [
     name: 'Credentials',
     credentials: { email: { label: 'Email', type: 'text' }, password: { label: 'Password', type: 'password' } },
     async authorize(credentials) {
-      if (!clientPromise) return null;
-      const client = await clientPromise;
-      const users = client.db().collection('users');
-      const user = await users.findOne({ email: credentials.email });
-      if (!user) return null;
-      const ok = await bcrypt.compare(credentials.password, user.password);
-      if (!ok) return null;
-      return { id: user._id.toString(), email: user.email, name: user.name };
+      try {
+        if (!clientPromise) {
+          throw new Error('Database not configured');
+        }
+        const client = await clientPromise;
+        if (!client) {
+          throw new Error('Database unavailable');
+        }
+        const users = client.db().collection('users');
+        const user = await users.findOne({ email: credentials.email });
+        if (!user) return null;
+        const ok = await bcrypt.compare(credentials.password, user.password);
+        if (!ok) return null;
+        return { id: user._id.toString(), email: user.email, name: user.name };
+      } catch (e) {
+        console.error('authorize() DB error:', e?.message || e);
+        // Throw to surface a generic sign-in error instead of crashing
+        throw new Error('SIGNIN_DB_UNAVAILABLE');
+      }
     },
   }),
 ];

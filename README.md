@@ -34,3 +34,22 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Environment and Auth setup
+
+Copy `.env.example` to `.env` and fill in values. At minimum set:
+
+```
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-random-secret
+MONGODB_URI=mongodb+srv://...
+STRIPE_SECRET_KEY=sk_test_...
+```
+
+If you see a Mongo SSL/TLS error during login/registration (e.g. `tlsv1 alert internal error`):
+
+- Ensure your `MONGODB_URI` is valid and reachable from your machine.
+- If using AWS DocumentDB or a cluster requiring a custom CA, download the CA bundle and set `MONGODB_CA_FILE=/absolute/path/to/ca.pem`.
+- As a last resort for local dev only, you can disable certificate validation by setting `MONGODB_TLS_INSECURE=true`.
+
+These options are read in `src/lib/mongodb.js` when creating the Mongo client.
