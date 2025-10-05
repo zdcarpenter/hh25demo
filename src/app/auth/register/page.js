@@ -6,12 +6,13 @@ import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Mail, Lock, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, Eye, EyeOff, Phone } from 'lucide-react';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [msg, setMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +27,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', { 
         method: 'POST', 
         headers: { 'content-type': 'application/json' }, 
-        body: JSON.stringify({ email, password, name }) 
+        body: JSON.stringify({ email, password, name, phone }) 
       });
       const data = await res.json();
       
@@ -97,6 +98,25 @@ export default function RegisterPage() {
                       required
                       className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                       placeholder="Enter your email"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="phone" className="block text-sm font-medium">
+                    Phone Number
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                      pattern="[0-9+\-() ]{7,20}"
+                      className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                      placeholder="Enter your phone number"
                     />
                   </div>
                 </div>

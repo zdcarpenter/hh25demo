@@ -1,0 +1,95 @@
+"use client";
+
+import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useCart } from '@/lib/cart-context';
+import { Button } from '@/components/ui/button';
+import { CreditCard, Loader2 } from 'lucide-react';
+
+// StripeCheckout: standalone Stripe button that mirrors the prior inline behavior
+// Props:
+// - useSingleProduct: boolean (if true, send { product: singleProductId })
+// - singleProductId: string | null
+// - items: array of cart-like items [{ id, name, price, quantity|qty }]
+// - isDisabled: boolean (disable while single product details are loading)
+// - onMessage?: (msg: string) => void
+// - onDebug?: (payload: any, response: any) => void
+export default function StripeCheckout({ useSingleProduct, singleProductId, items, isDisabled, onMessage, onDebug }) {
+  const { clearCart } = useCart();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  async function startCheckout() {
+    const noItems = !items || items.length === 0;
+    if (!useSingleProduct && noItems) {
+      onMessage?.('Cart is empty');
+      return;
+    }
+    if (useSingleProduct && !singleProductId) {
+      onMessage?.('Missing product');
+      return;
+    }
+
+    setIsProcessing(true);
+    onMessage?.('Creating secure checkout session...');
+
+    try {
+      const payload = useSingleProduct
+        ? { product: singleProductId }
+        : {
+            items: items.map((it) => ({
+              id: it.id,
+              name: it.name,
+              price: it.price,
+              qty: Number(it.quantity ?? it.qty ?? 1),
+            })),
+          };
+
+      const res = await fetch('/api/checkout/create-session', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      let data;
+      try { data = await res.json(); } catch {
+        const text = await res.text().catch(() => 'no-body');
+        data = { error: text };
+      }
+
+      onDebug?.(payload, { status: res.status, body: data });
+
+      if (res.ok && data.url) {
+        onMessage?.('Redirecting to secure payment...');
+        try { clearCart(); } catch {}
+        try {
+          window.location.href = data.url;
+        } catch (err) {
+          onMessage?.('Redirect failed. Open this URL manually: ' + (data.url || ''));
+          setIsProcessing(false);
+        }
+      } else {
+        onMessage?.(`Failed to create checkout session (status ${res.status}): ${data.error || JSON.stringify(data)}`);
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      onMessage?.('Network error. Please try again.');
+      setIsProcessing(false);
+    }
+  }
+
+  return (
+    <Button onClick={startCheckout} disabled={isProcessing || isDisabled} className="w-full mt-6" size="lg">
+      {isProcessing ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <CreditCard className="mr-2 h-4 w-4" />
+          Pay with Stripe
+        </>
+      )}
+    </Button>
+  );
+}

@@ -1,66 +1,52 @@
 "use client";
 
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CreditCard, Shield, Lock, CheckCircle, ArrowLeft, Sparkles, Clock, Loader2 } from 'lucide-react';
+import { Shield, Lock, CheckCircle, ArrowLeft, Sparkles, Clock } from 'lucide-react';
+import PayPalRedirect from './checkout/PayPalRedirect';
+import StripeCheckout from './checkout/StripeCheckout';
 
 export default function CheckoutClient() {
   const params = useSearchParams();
   const singleProduct = params.get('product');
-  const { items: cartItems, clearCart } = useCart();
+  const { items: cartItems } = useCart();
 
   const [message, setMessage] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [singleProductData, setSingleProductData] = useState(null);
+  const [lastPayload, setLastPayload] = useState(null);
+  const [lastResponse, setLastResponse] = useState(null);
 
   // Reflect live cart state in the UI
-  const items = cartItems;
-  const total = items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || item.qty || 0), 0);
+  const useSingleProduct = !!singleProduct && cartItems.length === 0;
+  const items = useSingleProduct && singleProductData
+    ? [{ id: singleProductData.id, name: singleProductData.name, price: Number(singleProductData.price), quantity: 1 }]
+    : cartItems;
+  const total = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity || item.qty || 0)), 0);
+  const isSingleLoading = !!singleProduct && cartItems.length === 0 && !singleProductData;
 
-  async function startCheckout() {
-    const useSingleProduct = !!singleProduct && items.length === 0;
-    if (!useSingleProduct && (!items || items.length === 0)) {
-      setMessage('Cart is empty');
-      return;
+  // Fetch single product details when needed (for display and amount consistency)
+  useEffect(() => {
+    let active = true;
+    async function fetchProduct() {
+      if (!useSingleProduct) return;
+      try {
+        const res = await fetch(`/api/products/${singleProduct}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) setSingleProductData(data);
+      } catch (e) { /* ignore */ }
     }
+    fetchProduct();
+    return () => { active = false; };
+  }, [singleProduct, useSingleProduct]);
 
-    setIsProcessing(true);
-    setMessage('Creating secure checkout session...');
-
-    try {
-      const payload = useSingleProduct
-        ? { product: singleProduct }
-        : {
-            items: items.map((it) => ({
-              id: it.id,
-              name: it.name,
-              price: it.price,
-              qty: Number(it.quantity ?? it.qty ?? 1),
-            })),
-          };
-
-      const res = await fetch('/api/checkout/create-session', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-
-      if (res.ok && data.url) {
-        clearCart();
-        setMessage('Redirecting to secure payment...');
-        window.location.href = data.url;
-      } else {
-        setMessage(data.error || 'Failed to create checkout session');
-        setIsProcessing(false);
-      }
-    } catch (error) {
-      setMessage('Network error. Please try again.');
-      setIsProcessing(false);
-    }
+  function handleDebug(payload, response) {
+    setLastPayload(payload);
+    setLastResponse(response);
   }
 
   if (items.length === 0 && !singleProduct) {
@@ -118,7 +104,22 @@ export default function CheckoutClient() {
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4">Order Items</h2>
                 <div className="space-y-4">
-                  {items.map((item) => (
+                  {isSingleLoading && (
+                    <div className="flex items-center justify-between py-4 border-b border-border last:border-0">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-lg bg-secondary flex items-center justify-center animate-pulse" />
+                        <div>
+                          <div className="h-4 w-40 bg-secondary/60 rounded animate-pulse mb-2" />
+                          <div className="h-3 w-24 bg-secondary/40 rounded animate-pulse" />
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="h-4 w-16 bg-secondary/60 rounded animate-pulse mb-2" />
+                        <div className="h-3 w-20 bg-secondary/40 rounded animate-pulse" />
+                      </div>
+                    </div>
+                  )}
+                  {!isSingleLoading && items.map((item) => (
                     <div key={item.id} className="flex items-center justify-between py-4 border-b border-border last:border-0">
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 rounded-lg bg-secondary flex items-center justify-center">
@@ -130,8 +131,8 @@ export default function CheckoutClient() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">${((item.price || 0) * (item.quantity || item.qty)).toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">${(item.price || 0).toFixed(2)} each</p>
+                        <p className="font-semibold">${((Number(item.price) || 0) * (Number(item.quantity || item.qty) || 0)).toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground">${(Number(item.price) || 0).toFixed(2)} each</p>
                       </div>
                     </div>
                   ))}
@@ -165,19 +166,25 @@ export default function CheckoutClient() {
                   </div>
                 </div>
 
-                <Button onClick={startCheckout} disabled={isProcessing} className="w-full mt-6" size="lg">
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Pay with Stripe
-                    </>
-                  )}
-                </Button>
+                <StripeCheckout
+                  useSingleProduct={!!singleProduct && cartItems.length === 0}
+                  singleProductId={singleProduct}
+                  items={items}
+                  isDisabled={isSingleLoading}
+                  onMessage={(m) => setMessage(m)}
+                  onDebug={(p, r) => handleDebug(p, r)}
+                />
+
+                {/* PayPal redirect button, matching size/spacing with Stripe */}
+                <div className="w-full mt-3">
+                  <PayPalRedirect
+                    amount={(!!singleProduct && cartItems.length === 0 && singleProductData)
+                      ? Number(singleProductData.price).toFixed(2)
+                      : total.toFixed(2)}
+                    onMessage={(m) => setMessage(m)}
+                    isDisabled={isSingleLoading}
+                  />
+                </div>
 
                 <div className="mt-4 space-y-2 text-xs text-muted-foreground">
                   <div className="flex items-center gap-2">
@@ -199,6 +206,24 @@ export default function CheckoutClient() {
                     }`}
                   >
                     {message}
+                  </div>
+                )}
+
+                {(lastPayload || lastResponse) && (
+                  <div className="mt-4 p-3 rounded border bg-gray-50 text-xs">
+                    <div className="font-medium mb-2">Debug</div>
+                    {lastPayload && (
+                      <div className="mb-2">
+                        <div className="text-muted-foreground">Last payload:</div>
+                        <pre className="text-xs mt-1 max-h-32 overflow-auto">{JSON.stringify(lastPayload, null, 2)}</pre>
+                      </div>
+                    )}
+                    {lastResponse && (
+                      <div>
+                        <div className="text-muted-foreground">Last response:</div>
+                        <pre className="text-xs mt-1 max-h-32 overflow-auto">{JSON.stringify(lastResponse, null, 2)}</pre>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

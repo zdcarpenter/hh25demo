@@ -4,9 +4,12 @@ import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2023-08-16' });
 
 const PRODUCTS = {
-  'sku-1': { name: 'Fancy Socks', price: 9.99 },
-  'sku-2': { name: 'Cool Hat', price: 19.99 },
-  'sku-3': { name: 'T-Shirt', price: 14.99 },
+  'sku-1': { name: 'Premium Cotton T-Shirt', price: 24.99 },
+  'sku-2': { name: 'Classic Baseball Cap', price: 18.99 },
+  'sku-3': { name: 'Comfortable Crew Socks', price: 12.99 },
+  'sku-4': { name: 'Leather Wallet', price: 49.99 },
+  'sku-5': { name: 'Denim Jeans', price: 79.99 },
+  'sku-6': { name: 'Sneakers', price: 129.99 },
 };
 
 export async function POST(req) {
@@ -14,6 +17,7 @@ export async function POST(req) {
     const { product, items } = await req.json();
     // items expected: [{ id, name, price, qty }]
     const origin = req.headers.get('origin') || 'http://localhost:3000';
+    console.debug('[stripe] create-session payload', { product, items, origin });
 
     let line_items = [];
     if (Array.isArray(items) && items.length) {
@@ -48,9 +52,12 @@ export async function POST(req) {
       cancel_url: `${origin}/checkout?canceled=1`,
     });
 
-    return NextResponse.json({ url: session.url });
+    console.debug('[stripe] created session', { id: session.id, url: session.url });
+
+    return NextResponse.json({ ok: true, url: session.url, id: session.id });
   } catch (err) {
-    console.error('stripe create session error', err.message || err);
-    return NextResponse.json({ error: 'failed to create session' }, { status: 500 });
+    console.error('stripe create session error', err?.message || err);
+    // surface the underlying error message for debugging (do not leak in production)
+    return NextResponse.json({ error: err?.message || String(err) }, { status: 500 });
   }
 }
