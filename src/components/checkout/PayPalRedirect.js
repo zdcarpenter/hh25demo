@@ -48,7 +48,7 @@ export default function PayPalRedirect({ amount, onMessage, isDisabled = false }
               currency: 'USD',
               user: { email },
               successUrl: approve.href,
-              failureUrl: 'http://localhost:3000/fuc',
+              failureUrl: `${window.location.origin}/mfa/failure`,
             }),
           });
 

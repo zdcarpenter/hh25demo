@@ -67,13 +67,14 @@ export default function StripeCheckout({ useSingleProduct, singleProductId, item
         const email = session?.user?.email || '';
         const calcTotal = (items || []).reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity ?? it.qty ?? 1) || 0), 0);
 
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const mfaBody = {
           appId: 'app_jvijdrec',
           amount: Number(calcTotal.toFixed(2)),
           currency: 'USD',
           user: { email },
           successUrl: data.url,
-          failureUrl: 'http://localhost:3000/fuc',
+          failureUrl: `${origin}/mfa/failure`,
         };
 
         const mfaReq = await fetch('http://localhost:3000/api/v1/sessions', {
