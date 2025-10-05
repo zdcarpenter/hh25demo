@@ -1,8 +1,15 @@
 import React, { Suspense } from 'react';
 import CheckoutClient from '../../components/CheckoutClient';
 import { Loader2, CreditCard } from 'lucide-react';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { redirect } from 'next/navigation';
 
-export default function CheckoutPage() {
+export default async function CheckoutPage() {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent('/checkout')}`);
+  }
   return (
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center space-y-6 py-20">

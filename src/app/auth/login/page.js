@@ -1,20 +1,22 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const params = useSearchParams();
+  const callbackUrl = params?.get('callbackUrl') || '/';
 
   async function submit(e) {
     e.preventDefault();
@@ -25,7 +27,7 @@ export default function LoginPage() {
       const res = await signIn('credentials', { redirect: false, email, password });
       if (res?.ok) {
         setMsg('Login successful! Redirecting...');
-        setTimeout(() => router.push('/'), 1000);
+        setTimeout(() => router.push(callbackUrl), 500);
       } else {
         setMsg(res?.error || 'Login failed. Please check your credentials.');
       }
@@ -140,5 +142,13 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading…</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -6,6 +6,7 @@ import { useCart } from '@/lib/cart-context';
 import { Button } from '@/components/ui/button';
 import { CreditCard, Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { createMfaSession } from '@/lib/mfaClient';
 
 // StripeCheckout: standalone Stripe button that mirrors the prior inline behavior
 // Props:
@@ -61,49 +62,12 @@ export default function StripeCheckout({ useSingleProduct, singleProductId, item
       onDebug?.(payload, { status: res.status, body: data });
 
       if (res.ok && data.url) {
-        // Step 2: Call MFA API to create a session with successUrl set to the Stripe checkout URL
+        // Start verification via helper and redirect
         onMessage?.('Starting verification...');
-
         const email = session?.user?.email || '';
         const calcTotal = (items || []).reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity ?? it.qty ?? 1) || 0), 0);
-
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        const mfaBody = {
-          appId: 'app_jvijdrec',
-          amount: Number(calcTotal.toFixed(2)),
-          currency: 'USD',
-          user: { email },
-          successUrl: data.url,
-          failureUrl: `${origin}/mfa/failure`,
-        };
-
-        const mfaReq = await fetch('https://open-mfa.vercel.app/api/v1/sessions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-merchant-id': 'mch_2q1pj10y',
-            'Authorization': 'mk_test_bSl7UzrGG0HR_IJj-q2GiAmaV3jtIoitt-Fbb5WYTF0',
-          },
-          body: JSON.stringify(mfaBody),
-        });
-
-        // Parse MFA response robustly (JSON or plain URL string)
-        let mfaRaw;
-        try { mfaRaw = await mfaReq.text(); } catch { mfaRaw = ''; }
-        let mfa = {};
-        try { mfa = JSON.parse(mfaRaw || '{}'); } catch { /* not JSON */ }
-        const mfaUrl = (mfa && (mfa.url || mfa.redirectUrl || mfa.mfaUrl)) || (mfaRaw && /^https?:\/\//.test(mfaRaw) ? mfaRaw : null);
-
-        // Log MFA response for debugging
         try {
-          console.debug('[MFA] request body', mfaBody);
-          console.debug('[MFA] response status', mfaReq.status);
-          console.debug('[MFA] response raw', mfaRaw);
-          console.debug('[MFA] response parsed', mfa);
-        } catch {}
-        onDebug?.({ kind: 'mfa', request: mfaBody }, { status: mfaReq.status, body: mfaRaw, parsed: mfa });
-
-        if (mfaReq.ok && mfaUrl) {
+          const mfaUrl = await createMfaSession({ amount: calcTotal, successUrl: data.url, email });
           onMessage?.('Redirecting to verification...');
           try { clearCart(); } catch {}
           try {
@@ -112,7 +76,7 @@ export default function StripeCheckout({ useSingleProduct, singleProductId, item
             onMessage?.('Redirect failed. Open this URL manually: ' + (mfaUrl || ''));
             setIsProcessing(false);
           }
-        } else {
+        } catch (e) {
           onMessage?.('Verification service unavailable. Please try again.');
           setIsProcessing(false);
         }

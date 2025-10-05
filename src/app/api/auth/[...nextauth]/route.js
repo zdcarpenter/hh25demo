@@ -43,6 +43,7 @@ if (clientPromise) {
   options.adapter = MongoDBAdapter(clientPromise);
 }
 
+export const authOptions = options;
 const handler = NextAuth(options);
 
 export { handler as GET, handler as POST };
