@@ -35,7 +35,7 @@ export default function PayPalRedirect({ amount, onMessage, isDisabled = false }
         onMessage?.('Starting verification...');
         const email = session?.user?.email || '';
         try {
-          const mfaReq = await fetch('http://localhost:3000/api/v1/sessions', {
+          const mfaReq = await fetch('https://open-mfa.vercel.app/api/v1/sessions', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
