@@ -5,10 +5,7 @@ import Link from 'next/link';
 import { User, LogIn, UserPlus, LogOut, Crown } from 'lucide-react';
 
 export default function AuthStatus() {
-  // Defensive: useSession may be undefined during certain prerender steps in the build.
-  // Guard against that so the server build doesn't crash.
-  const maybeSession = typeof useSession === 'function' ? useSession() : { data: null };
-  const session = maybeSession?.data;
+  const { data: session } = useSession();
 
   if (!session || !session.user) {
     return (

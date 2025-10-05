@@ -16,7 +16,7 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight text-balance">
-                Discover products you'll love.
+                Discover products you&apos;ll love.
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl">
                 Shop the latest trends in electronics, fashion, and lifestyle. Quality products with fast shipping and
@@ -88,7 +88,7 @@ export default function HomePage() {
           <div className="flex items-end justify-between mb-12">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Shop by Category</h2>
-              <p className="text-muted-foreground">Find exactly what you're looking for</p>
+              <p className="text-muted-foreground">Find exactly what you&apos;re looking for</p>
             </div>
             <Button variant="ghost" asChild className="hidden md:flex">
               <Link href="/shop">

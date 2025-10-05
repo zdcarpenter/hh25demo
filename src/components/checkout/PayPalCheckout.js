@@ -21,6 +21,8 @@ export default function PayPalCheckout({ amount }) {
 
   useEffect(() => {
     let mounted = true;
+    const localButtonsContainer = buttonsContainerRef.current;
+    const localPaypalContainer = paypalRef.current;
 
     async function fetchSinglePriceIfNeeded() {
       try {
@@ -49,7 +51,7 @@ export default function PayPalCheckout({ amount }) {
 
     function renderButtonsLocal() {
       // ensure container still in DOM
-      const container = buttonsContainerRef.current || paypalRef.current;
+      const container = localButtonsContainer || localPaypalContainer;
       if (!container || !document.body.contains(container) || !window.paypal) return;
       if (container.dataset && container.dataset.paypalRendered === '1') return;
       // clear only the inner buttons container
@@ -132,7 +134,7 @@ export default function PayPalCheckout({ amount }) {
       mounted = false;
       // cleanup only the inner buttons container
       try {
-        const container = buttonsContainerRef.current || paypalRef.current;
+        const container = localButtonsContainer || localPaypalContainer;
         if (container) container.innerHTML = '';
       } catch (e) {}
       // detach listeners
